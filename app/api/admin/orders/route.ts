@@ -9,9 +9,9 @@ export async function GET(req: NextRequest) {
   return withAuth(req, ['SUPER_ADMIN', 'FARM_ADMIN', 'USERS'], async () => {
     try {
       await dbConnect();
-      // Populate customerId to get name and phone
+      // Populate customerId with only name, phone, and email to optimize payload size and security
       const orders = await Order.find({})
-        .populate({ path: 'customerId', model: Customer })
+        .populate({ path: 'customerId', model: Customer, select: 'name phone email' })
         .sort({ createdAt: -1 });
 
       return successResponse(orders, 'Orders fetched successfully');
