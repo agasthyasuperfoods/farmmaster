@@ -24,19 +24,42 @@ export async function getOrders(req: NextRequest) {
 
     await dbConnect();
 
+    const { searchParams } = new URL(req.url);
+    const dateParam = searchParams.get('date'); // YYYY-MM-DD format
+
+    const query: any = {};
+    if (user.role === 'DELIVERY_EXECUTIVE') {
+      query.assignedTo = user.userId;
+    } else {
+      query.customerId = user.userId;
+    }
+
+    if (dateParam) {
+      // Create date filter logic
+      const startOfDay = new Date(dateParam);
+      const endOfDay = new Date(dateParam);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      query.$or = [
+        { deliveryDate: dateParam },
+        {
+          $and: [
+            { $or: [{ deliveryDate: null }, { deliveryDate: '' }] },
+            { createdAt: { $gte: startOfDay, $lte: endOfDay } }
+          ]
+        }
+      ];
+    }
+
     let ordersList;
     if (user.role === 'DELIVERY_EXECUTIVE') {
-      // Find all routes assigned to this delivery executive
-      const executiveRoutes = await DeliveryRoute.find({ assignedExecutiveId: user.userId });
-      const assignedPincodes = executiveRoutes.flatMap((r: any) => r.pincodes || []);
-
       console.log(`[GetOrders] Executive: ${user.userId}`);
-      ordersList = await Order.find({ assignedTo: user.userId })
+      ordersList = await Order.find(query)
         .sort({ createdAt: -1 })
         .populate('assignedTo', 'name');
       console.log(`[GetOrders] Found ${ordersList.length} orders`);
     } else {
-      ordersList = await Order.find({ customerId: user.userId })
+      ordersList = await Order.find(query)
         .sort({ createdAt: -1 })
         .populate('assignedTo', 'name');
     }

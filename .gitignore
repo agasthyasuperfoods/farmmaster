@@ -43,3 +43,6 @@ next-env.d.ts
 # scratch / temp scripts
 scratch/
 test_*.js
+
+.vercel
+.env*
