@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import mongoose from 'mongoose';
 import dbConnect from '@/src/database/dbConnection';
 import Product from '@/app/api/customer-app/models/Product';
 import ProductInventory from '@/app/api/customer-app/models/ProductInventory';
@@ -73,14 +74,14 @@ export async function PUT(
 
       if (body.quantity !== undefined) {
         await ProductInventory.findOneAndUpdate(
-          { productId: id },
+          { productId: new mongoose.Types.ObjectId(id) },
           { quantity: body.quantity },
           { upsert: true }
         );
       }
 
       const obj = typeof updatedProduct.toObject === 'function' ? updatedProduct.toObject() : updatedProduct;
-      const inv = await ProductInventory.findOne({ productId: id });
+      const inv = await ProductInventory.findOne({ productId: new mongoose.Types.ObjectId(id) });
       if (inv) {
         obj.quantity = inv.quantity;
       }
@@ -106,7 +107,7 @@ export async function DELETE(
         return errorResponse('Product not found', 404);
       }
 
-      await ProductInventory.deleteOne({ productId: id });
+      await ProductInventory.deleteOne({ productId: new mongoose.Types.ObjectId(id) });
 
       return successResponse(null, 'Product deleted successfully');
     } catch (error: any) {
