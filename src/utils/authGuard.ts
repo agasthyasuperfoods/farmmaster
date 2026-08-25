@@ -184,12 +184,21 @@ export async function withAuth(
   const reqSizeKB = (reqSize / 1024).toFixed(2);
 
   let resSize = 0;
-  try {
-    const cloned = response.clone();
-    const blob = await cloned.blob();
-    resSize = blob.size;
-  } catch (error) {
-    // Suppress errors during cloning or reading body
+  const contentLength = response.headers.get('content-length');
+  if (contentLength) {
+    resSize = parseInt(contentLength, 10);
+  } else {
+    // Only clone and read blob if it's text or JSON to avoid memory issues on files/streams
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json') || contentType.includes('text/')) {
+      try {
+        const cloned = response.clone();
+        const blob = await cloned.blob();
+        resSize = blob.size;
+      } catch (error) {
+        // Suppress errors during cloning or reading body
+      }
+    }
   }
   const resSizeKB = (resSize / 1024).toFixed(2);
 
