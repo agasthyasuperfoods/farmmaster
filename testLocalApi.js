@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
 
 const token = jwt.sign(
-  { id: '6a118f4e2b050dae0af64f86', role: 'SUPER_ADMIN', email: 'admin@admin.com' },
-  'dev_secret_key_12345',
+  { userId: '6a476826d9e63b6e414cfe92', role: 'SUPER_ADMIN', email: 'admin@admin.com' },
+  'agasthya_jwt_secret_prod_2026',
   { expiresIn: '1h' }
 );
 

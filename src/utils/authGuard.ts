@@ -160,21 +160,40 @@ export function authorize(user: TokenPayload, allowedRolesOrPermissions: string[
   });
 }
 
-// Higher-order helper to wrap handlers
 export async function withAuth(
   req: NextRequest,
   allowedRolesOrPermissions: string[],
   handler: (user: TokenPayload) => Promise<Response>
 ) {
+  let response: Response;
   const user = await authenticate(req);
   if (!user) {
-    return unauthorizedResponse('Invalid or expired token');
+    response = unauthorizedResponse('Invalid or expired token');
+  } else {
+    const { pathname } = req.nextUrl;
+    if (!authorize(user, allowedRolesOrPermissions, req.method, pathname)) {
+      response = forbiddenResponse('You do not have permission for this action');
+    } else {
+      response = await handler(user);
+    }
   }
 
+  // Calculate and log transfer sizes
   const { pathname } = req.nextUrl;
-  if (!authorize(user, allowedRolesOrPermissions, req.method, pathname)) {
-    return forbiddenResponse('You do not have permission for this action');
-  }
+  const reqSize = parseInt(req.headers.get('content-length') || '0', 10);
+  const reqSizeKB = (reqSize / 1024).toFixed(2);
 
-  return handler(user);
+  let resSize = 0;
+  try {
+    const cloned = response.clone();
+    const blob = await cloned.blob();
+    resSize = blob.size;
+  } catch (error) {
+    // Suppress errors during cloning or reading body
+  }
+  const resSizeKB = (resSize / 1024).toFixed(2);
+
+  console.log(`[API] ${req.method} ${pathname} - Req: ${reqSizeKB}KB | Res: ${resSizeKB}KB`);
+
+  return response;
 }

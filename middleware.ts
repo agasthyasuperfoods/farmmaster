@@ -57,19 +57,6 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // Measure response size
-  let resSize = 0;
-  try {
-    const cloned = response.clone();
-    const blob = await cloned.blob();
-    resSize = blob.size;
-  } catch (error) {
-    // Suppress errors during cloning or reading body
-  }
-  const resSizeKB = (resSize / 1024).toFixed(2);
-
-  console.log(`[API] ${request.method} ${pathname} - Req: ${reqSizeKB}KB | Res: ${resSizeKB}KB`);
-
   return response;
 }
 
