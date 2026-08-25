@@ -35,10 +35,9 @@ export async function getOrders(req: NextRequest) {
     }
 
     if (dateParam) {
-      // Create date filter logic
-      const startOfDay = new Date(dateParam);
-      const endOfDay = new Date(dateParam);
-      endOfDay.setHours(23, 59, 59, 999);
+      // Create timezone-safe date filter logic (Asia/Kolkata +05:30)
+      const startOfDay = new Date(`${dateParam}T00:00:00+05:30`);
+      const endOfDay = new Date(`${dateParam}T23:59:59.999+05:30`);
 
       query.$or = [
         { deliveryDate: dateParam },
