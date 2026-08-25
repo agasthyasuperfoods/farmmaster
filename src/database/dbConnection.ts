@@ -49,7 +49,7 @@ function cleanMongoUri(rawUri?: string): string {
   if (uri.startsWith("'") && uri.endsWith("'")) uri = uri.slice(1, -1);
   uri = uri.trim();
   if (!uri) {
-    uri = 'mongodb://127.0.0.1:27017/farmmaster';
+    uri = 'mongodb+srv://agasthyanutromilkanm_db_user:RIUUsL50QZtWqd6R@anm.spyvi98.mongodb.net/';
   }
   if (uri.startsWith('mongodb+srv://')) {
     // Strip illegal port numbers from mongodb+srv format (e.g. :27017)
