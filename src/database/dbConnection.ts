@@ -31,6 +31,17 @@ import '../models/Designation';
 import '../models/Labor';
 import '../models/ProcurementSource';
 import '../../app/api/customer-app/models/Customer';
+import '../../app/api/customer-app/models/Address';
+import '../../app/api/customer-app/models/Cart';
+import '../../app/api/customer-app/models/Category';
+import '../../app/api/customer-app/models/DeliveryExecutive';
+import '../../app/api/customer-app/models/DeliveryLocation';
+import '../../app/api/customer-app/models/DeliveryRoute';
+import '../../app/api/customer-app/models/Favourite';
+import '../../app/api/customer-app/models/Order';
+import '../../app/api/customer-app/models/PaymentMethod';
+import '../../app/api/customer-app/models/Product';
+import '../../app/api/customer-app/models/ProductInventory';
 
 function cleanMongoUri(rawUri?: string): string {
   let uri = (rawUri || '').trim();
