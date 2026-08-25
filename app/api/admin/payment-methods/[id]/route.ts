@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import mongoose from 'mongoose';
 import dbConnect from '@/src/database/dbConnection';
 import PaymentMethod from '@/app/api/customer-app/models/PaymentMethod';
 import { withAuth } from '@/src/utils/authGuard';
@@ -11,6 +12,9 @@ export async function GET(
   return withAuth(req, ['SUPER_ADMIN', 'FARM_ADMIN', 'USERS'], async () => {
     try {
       const { id } = await params;
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return errorResponse('Payment method not found', 404);
+      }
       await dbConnect();
       const paymentMethod = await PaymentMethod.findById(id);
       if (!paymentMethod) {
@@ -31,6 +35,9 @@ export async function PUT(
   return withAuth(req, ['SUPER_ADMIN', 'FARM_ADMIN', 'USERS'], async () => {
     try {
       const { id } = await params;
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return errorResponse('Payment method not found', 404);
+      }
       let body: any;
       try {
         body = await req.json();
@@ -74,6 +81,9 @@ export async function DELETE(
   return withAuth(req, ['SUPER_ADMIN', 'FARM_ADMIN', 'USERS'], async () => {
     try {
       const { id } = await params;
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return errorResponse('Payment method not found', 404);
+      }
       await dbConnect();
       const deleted = await PaymentMethod.findByIdAndDelete(id);
       if (!deleted) {
