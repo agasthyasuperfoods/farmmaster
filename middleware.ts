@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const origin = request.headers.get('origin') ?? '*';
 
   // Handle preflight request
@@ -33,6 +33,10 @@ export function middleware(request: NextRequest) {
     requestHeaders = headersList;
   }
 
+  // Measure request size
+  const reqSize = parseInt(request.headers.get('content-length') || '0', 10);
+  const reqSizeKB = (reqSize / 1024).toFixed(2);
+
   // Handle actual request
   const response = NextResponse.next({
     request: {
@@ -52,6 +56,19 @@ export function middleware(request: NextRequest) {
       'public, max-age=60, s-maxage=300, stale-while-revalidate=600'
     );
   }
+
+  // Measure response size
+  let resSize = 0;
+  try {
+    const cloned = response.clone();
+    const blob = await cloned.blob();
+    resSize = blob.size;
+  } catch (error) {
+    // Suppress errors during cloning or reading body
+  }
+  const resSizeKB = (resSize / 1024).toFixed(2);
+
+  console.log(`[API] ${request.method} ${pathname} - Req: ${reqSizeKB}KB | Res: ${resSizeKB}KB`);
 
   return response;
 }
