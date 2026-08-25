@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = "http://localhost:3000";
 
 async function runTests() {
   try {
@@ -15,7 +15,7 @@ async function runTests() {
     });
     const sendOtpData = await sendOtpRes.json();
     console.log("Response:", JSON.stringify(sendOtpData, null, 2));
-    if (!sendOtpRes.ok || !sendOtpData.success || sendOtpData.data.isRegistered !== false) {
+    if (!sendOtpRes.ok || !sendOtpData.success || sendOtpData.data.isRegistered !== true) {
       throw new Error("Failed send-otp test");
     }
     console.log("✅ send-otp test passed!\n");
