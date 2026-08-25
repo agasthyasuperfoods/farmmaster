@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/src/database/dbConnection';
 import DeliveryExecutive from '@/delivery-application/models/DeliveryExecutive';
 import Customer from '@/app/api/customer-app/models/Customer';
+import DeliveryRoute from '@/app/api/customer-app/models/DeliveryRoute';
 
 export async function GET() {
   try {
@@ -40,14 +41,40 @@ export async function GET() {
           vehicleNumber: 'TEST-123',
           status: 'active'
         });
+      } else {
+        // Make sure password is correct plain-text fallback
+        exec.password = rider.password;
+        exec.status = 'active';
+        await exec.save();
       }
 
       results.push({ name: rider.name, phone: rider.phone, password: rider.password });
     }
 
+    // Assign route to Default Tester
+    const testerExec = await DeliveryExecutive.findOne({ phone: '1234567890' });
+    let assignedRouteName = '';
+    if (testerExec) {
+      let route = await DeliveryRoute.findOne({ routeCode: 'ROUTE-A' });
+      if (!route) {
+        route = await DeliveryRoute.create({
+          routeName: 'Main Route A',
+          routeCode: 'ROUTE-A',
+          assignedExecutiveId: testerExec._id,
+          status: 'active'
+        });
+      } else {
+        route.assignedExecutiveId = testerExec._id;
+        route.status = 'active';
+        await route.save();
+      }
+      assignedRouteName = route.routeName;
+    }
+
     return NextResponse.json({
       success: true,
-      message: '3 Delivery Executives successfully created in production!',
+      message: 'Riders and Route initialized successfully in production!',
+      assignedRoute: assignedRouteName,
       data: results
     });
   } catch (error: any) {
