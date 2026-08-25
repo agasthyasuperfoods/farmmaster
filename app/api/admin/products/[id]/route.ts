@@ -72,16 +72,18 @@ export async function PUT(
         return errorResponse('Product not found', 404);
       }
 
+      const productId = mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
+
       if (body.quantity !== undefined) {
         await ProductInventory.findOneAndUpdate(
-          { productId: new mongoose.Types.ObjectId(id) },
+          { productId },
           { quantity: body.quantity },
           { upsert: true }
         );
       }
 
       const obj = typeof updatedProduct.toObject === 'function' ? updatedProduct.toObject() : updatedProduct;
-      const inv = await ProductInventory.findOne({ productId: new mongoose.Types.ObjectId(id) });
+      const inv = await ProductInventory.findOne({ productId });
       if (inv) {
         obj.quantity = inv.quantity;
       }
@@ -107,7 +109,8 @@ export async function DELETE(
         return errorResponse('Product not found', 404);
       }
 
-      await ProductInventory.deleteOne({ productId: new mongoose.Types.ObjectId(id) });
+      const productId = mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
+      await ProductInventory.deleteOne({ productId });
 
       return successResponse(null, 'Product deleted successfully');
     } catch (error: any) {
