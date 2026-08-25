@@ -8,9 +8,10 @@ export async function GET() {
     await dbConnect();
 
     const riders = [
-      { name: 'Rider One', phone: '9111111111' },
-      { name: 'Rider Two', phone: '9222222222' },
-      { name: 'Rider Three', phone: '9333333333' }
+      { name: 'Rider One', phone: '9111111111', password: 'password123' },
+      { name: 'Rider Two', phone: '9222222222', password: 'password123' },
+      { name: 'Rider Three', phone: '9333333333', password: 'password123' },
+      { name: 'Default Tester', phone: '1234567890', password: 'Tester' }
     ];
 
     const results = [];
@@ -34,14 +35,14 @@ export async function GET() {
           name: rider.name,
           phone: rider.phone,
           email: `${rider.phone}@test.com`,
-          password: 'password123',
+          password: rider.password,
           vehicleType: 'Bike',
           vehicleNumber: 'TEST-123',
           status: 'active'
         });
       }
 
-      results.push({ name: rider.name, phone: rider.phone });
+      results.push({ name: rider.name, phone: rider.phone, password: rider.password });
     }
 
     return NextResponse.json({
