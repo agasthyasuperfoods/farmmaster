@@ -14,8 +14,10 @@ import {
   XCircle,
   Truck,
   ArrowUpDown,
-  Trash2
+  Trash2,
+  FileText
 } from 'lucide-react';
+import { downloadOrderInvoice } from '@/src/utils/invoiceGenerator';
 
 interface Customer {
   _id: string;
@@ -265,15 +267,23 @@ export default function OrdersPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <button
+                            onClick={() => downloadOrderInvoice(order)}
+                            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black text-slate-700 bg-slate-100 border border-slate-200 hover:bg-slate-200 transition-all uppercase tracking-wider shadow-sm hover:shadow"
+                            title="Download / Print Invoice"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-slate-600" />
+                            Invoice
+                          </button>
+                          <button
                             onClick={() => setSelectedOrder(order)}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black text-blue-700 bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-all uppercase tracking-wider shadow-sm hover:shadow"
+                            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black text-blue-700 bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-all uppercase tracking-wider shadow-sm hover:shadow"
                           >
                             <Info className="w-3.5 h-3.5" />
                             Details
                           </button>
                           <button
                             onClick={() => handleDeleteOrder(order._id)}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black text-red-700 bg-red-50 border border-red-100 hover:bg-red-100 transition-all uppercase tracking-wider shadow-sm hover:shadow"
+                            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black text-red-700 bg-red-50 border border-red-100 hover:bg-red-100 transition-all uppercase tracking-wider shadow-sm hover:shadow"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             Delete
@@ -383,12 +393,19 @@ export default function OrdersPage() {
               </div>
             </div>
 
-            <div className="mt-8 pt-4 border-t border-slate-100 flex justify-end">
+            <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <button
+                onClick={() => downloadOrderInvoice(selectedOrder)}
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+              >
+                <FileText className="w-4 h-4" />
+                Download Invoice
+              </button>
               <button
                 onClick={() => setSelectedOrder(null)}
                 className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all active:scale-95"
               >
-                Close Invoice
+                Close
               </button>
             </div>
           </div>

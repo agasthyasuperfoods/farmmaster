@@ -179,21 +179,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const isCustomerApp = pathname.startsWith('/customer-app');
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex overflow-hidden">
+    <div className="h-screen w-screen bg-slate-50 text-slate-900 flex overflow-hidden">
       {/* Sidebar Desktop */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
-        sidebarOpen ? "translate-x-0" : "-translate-x-0"
+        "fixed inset-y-0 left-0 z-50 w-72 h-screen max-h-screen bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 shrink-0 flex flex-col",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="h-full flex flex-col">
-          <div className="p-8 flex items-center gap-3">
+        <div className="h-full flex flex-col min-h-0">
+          <div className="p-8 flex items-center gap-3 shrink-0">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
               <CattleIcon className="w-6 h-6 text-white" />
             </div>
             <span className="text-xl font-bold tracking-tight text-slate-900">FarmMaster</span>
           </div>
 
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto min-h-0">
             {allowedSidebarItems.map((item) => {
               if (item.children) {
                 const isExpanded = !!expandedMenus[item.name];
@@ -268,7 +268,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             })}
           </nav>
 
-          <div className="p-6 border-t border-slate-100">
+          <div className="p-6 border-t border-slate-100 shrink-0 mt-auto">
             <button
               onClick={handleLogout}
               className="flex items-center gap-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors font-semibold text-sm"
@@ -281,9 +281,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-screen max-h-screen overflow-hidden">
         {/* Navbar */}
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-40">
+        <header className="h-20 shrink-0 bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-4">
             <button
               className="lg:hidden p-2 text-slate-500 hover:text-slate-900"
@@ -308,7 +308,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page Content */}
-        <main className={cn("flex-1 overflow-y-auto p-10 relative", isCustomerApp && "customer-app-theme")}>
+        <main className={cn("flex-1 min-h-0 overflow-y-auto p-10 relative", isCustomerApp && "customer-app-theme")}>
           {children}
         </main>
       </div>
