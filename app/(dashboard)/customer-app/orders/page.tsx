@@ -41,6 +41,9 @@ interface Order {
   status: string;
   items: OrderItem[];
   createdAt: string;
+  deliveryDate?: string;
+  deliverySlot?: string;
+  address?: any;
 }
 
 const statusColors: Record<string, string> = {
@@ -341,6 +344,11 @@ export default function OrdersPage() {
                   <div className="space-y-1">
                     <p className="font-bold text-slate-900">₹{getOrderTotal(selectedOrder).toFixed(2)}</p>
                     <p className="text-xs text-slate-500 font-semibold">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
+                    {selectedOrder.deliveryDate && (
+                      <p className="text-xs text-blue-600 font-bold mt-1">
+                        Delivery: {selectedOrder.deliveryDate} {selectedOrder.deliverySlot ? `(${selectedOrder.deliverySlot})` : ''}
+                      </p>
+                    )}
                   </div>
                 </div>
 

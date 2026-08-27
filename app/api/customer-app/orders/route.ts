@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       return errorResponse('Invalid JSON body', 400);
     }
 
-    const { orderNumber, status, items, totalPrice, address, deliveryDate } = body;
+    const { orderNumber, status, items, totalPrice, address, deliveryDate, deliverySlot } = body;
     if (!orderNumber || !items || !Array.isArray(items) || items.length === 0) {
       return errorResponse('Missing required fields or items', 400);
     }
@@ -135,6 +135,7 @@ export async function POST(req: NextRequest) {
       address,
       assignedTo,
       deliveryDate,
+      deliverySlot,
     });
 
     // Reduce product stocks dynamically

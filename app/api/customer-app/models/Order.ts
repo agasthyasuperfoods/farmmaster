@@ -17,6 +17,7 @@ const OrderSchema = new Schema(
     address: { type: Object },
     assignedTo: { type: Schema.Types.ObjectId, ref: 'DeliveryExecutive', default: null },
     deliveryDate: { type: String, default: null },
+    deliverySlot: { type: String, default: null },
   },
   { timestamps: true }
 );

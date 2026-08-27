@@ -4,6 +4,7 @@ export interface InvoiceOrder {
   status: string;
   createdAt: string;
   deliveryDate?: string | null;
+  deliverySlot?: string | null;
   customerId?: {
     _id?: string;
     name?: string;
@@ -279,6 +280,7 @@ export function downloadOrderInvoice(order: InvoiceOrder) {
         <p>Invoice No: <strong>${invoiceNo}</strong></p>
         <p>Order Date: <strong>${orderDate}</strong></p>
         ${order.deliveryDate ? `<p>Delivery Date: <strong>${order.deliveryDate}</strong></p>` : ''}
+        ${order.deliverySlot ? `<p>Delivery Slot: <strong>${order.deliverySlot}</strong></p>` : ''}
         <p>Status: <strong style="text-transform: uppercase; color: #1d4ed8;">${order.status}</strong></p>
       </div>
     </div>

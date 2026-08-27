@@ -42,6 +42,7 @@ import '../../app/api/customer-app/models/Order';
 import '../../app/api/customer-app/models/PaymentMethod';
 import '../../app/api/customer-app/models/Product';
 import '../../app/api/customer-app/models/ProductInventory';
+import '../../app/api/customer-app/models/DeliverySlot';
 
 function cleanMongoUri(rawUri?: string): string {
   let uri = (rawUri || '').trim();
