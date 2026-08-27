@@ -40,7 +40,7 @@ export default function HomePage() {
       if (result.success) {
         localStorage.setItem('token', result.data.tokens.accessToken);
         localStorage.setItem('user', JSON.stringify(result.data.user));
-        router.push('/');
+        window.location.replace('/');
       } else {
         setError(result.error || 'Login failed');
       }

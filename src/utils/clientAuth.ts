@@ -60,18 +60,34 @@ export function installAuthFetchInterceptor(): () => void {
   const original = window.fetch.bind(window);
 
   window.fetch = async function patchedFetch(input: RequestInfo | URL, init?: RequestInit) {
-    const response = await original(input, init);
+    const token = getToken();
+    let modifiedInit = init;
+
+    const urlStr =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+        ? input.toString()
+        : (input as any)?.url || '';
+
+    // Auto-attach authorization bearer header to /api/ calls if not provided
+    if (token && urlStr.includes('/api/') && !urlStr.includes('/api/auth/login')) {
+      const headers = new Headers(init?.headers);
+      if (!headers.has('Authorization')) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      modifiedInit = { ...init, headers };
+    }
+
+    const response = await original(input, modifiedInit);
 
     if (response.status === 401) {
-      const url =
-        typeof input === 'string'
-          ? input
-          : input instanceof URL
-          ? input.toString()
-          : input.url;
-
-      if (!url.includes('/api/auth/login')) {
-        logoutAndRedirect();
+      if (!urlStr.includes('/api/auth/login')) {
+        const currentToken = getToken();
+        // Only trigger logout if token is actually missing or expired
+        if (!currentToken || isTokenExpired(currentToken)) {
+          logoutAndRedirect();
+        }
       }
     }
 
