@@ -15,7 +15,9 @@ import {
   Pencil,
   Trash2,
   Save,
-  AlertTriangle
+  AlertTriangle,
+  UserPlus,
+  Plus
 } from 'lucide-react';
 
 interface Address {
@@ -47,6 +49,21 @@ export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   
+  // Add customer state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addForm, setAddForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    addressLabel: 'Home',
+    addressLine1: '',
+    addressLine2: '',
+    city: 'Hyderabad',
+    state: 'Telangana',
+    pincode: '',
+  });
+  const [addModalMessage, setAddModalMessage] = useState({ type: '', text: '' });
+
   // Edit customer state
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editForm, setEditForm] = useState({ name: '', phone: '', email: '' });
@@ -87,6 +104,58 @@ export default function CustomersPage() {
       (customer.email && customer.email.toLowerCase().includes(search))
     );
   });
+
+  const handleCreateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setAddModalMessage({ type: '', text: '' });
+
+    try {
+      const token = localStorage.getItem('token');
+      const payload: any = {
+        name: addForm.name.trim(),
+        phone: addForm.phone.trim(),
+        email: addForm.email.trim() || undefined,
+      };
+
+      if (addForm.addressLine1.trim() && addForm.city.trim()) {
+        payload.address = {
+          label: addForm.addressLabel.trim() || 'Home',
+          fullName: addForm.name.trim(),
+          phone: addForm.phone.trim(),
+          addressLine1: addForm.addressLine1.trim(),
+          addressLine2: addForm.addressLine2.trim(),
+          city: addForm.city.trim(),
+          state: addForm.state.trim() || 'Telangana',
+          pincode: addForm.pincode.trim(),
+        };
+      }
+
+      const res = await fetch('/api/admin/customers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        setAddModalMessage({ type: 'success', text: 'Customer added successfully!' });
+        await fetchCustomers();
+        setTimeout(() => {
+          setIsAddModalOpen(false);
+        }, 1200);
+      } else {
+        setAddModalMessage({ type: 'error', text: result.error || 'Failed to add customer' });
+      }
+    } catch (err: any) {
+      setAddModalMessage({ type: 'error', text: err.message || 'An unexpected error occurred' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleEditClick = (customer: Customer) => {
     setEditingCustomer(customer);
@@ -157,11 +226,32 @@ export default function CustomersPage() {
   return (
     <div className="space-y-12">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black text-slate-900 mb-2">Customer Directory</h1>
           <p className="text-slate-500 font-bold tracking-tight">Registered mobile client accounts and delivery profiles.</p>
         </div>
+        <button
+          onClick={() => {
+            setAddForm({
+              name: '',
+              phone: '',
+              email: '',
+              addressLabel: 'Home',
+              addressLine1: '',
+              addressLine2: '',
+              city: 'Hyderabad',
+              state: 'Telangana',
+              pincode: '',
+            });
+            setAddModalMessage({ type: '', text: '' });
+            setIsAddModalOpen(true);
+          }}
+          className="inline-flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-500/25 active:scale-95 self-start sm:self-auto"
+        >
+          <UserPlus className="w-4 h-4" />
+          Add Customer
+        </button>
       </div>
 
       {/* Search and stats bar */}
@@ -509,6 +599,195 @@ export default function CustomersPage() {
                     <Save className="w-4 h-4" />
                   )}
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Customer Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-8">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-2xl" onClick={() => setIsAddModalOpen(false)} />
+          
+          <div className="bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 w-full max-w-3xl relative z-10 shadow-3xl animate-in slide-in-from-bottom-32 duration-500 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-4 sm:gap-6">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-600 rounded-[20px] flex items-center justify-center shadow-lg shadow-blue-600/30">
+                  <UserPlus className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+                </div>
+                <div>
+                   <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Add New Customer</h2>
+                   <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-[0.3em] font-black">Mobile Client Profile Registry</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl text-slate-400 hover:text-slate-900 transition-all transform hover:rotate-90 duration-500"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {addModalMessage.text && (
+              <div className={`mb-6 p-4 rounded-[20px] flex items-center gap-3 shadow-sm border shrink-0 ${
+                addModalMessage.type === 'success' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
+              }`}>
+                {addModalMessage.type === 'success' && <CheckCircle2 className="w-5 h-5" />}
+                {addModalMessage.type === 'error' && <AlertTriangle className="w-5 h-5" />}
+                <p className="font-black text-sm">{addModalMessage.text}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateCustomer} className="flex-1 overflow-y-auto space-y-8 pr-2">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  Customer Information
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Full Name <span className="text-rose-500">*</span></label>
+                    <input
+                      type="text"
+                      required
+                      value={addForm.name}
+                      onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                      placeholder="e.g. Rahul Sharma"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-[16px] px-4 py-3 text-slate-900 font-bold focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Mobile Number <span className="text-rose-500">*</span></label>
+                    <input
+                      type="tel"
+                      required
+                      value={addForm.phone}
+                      onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
+                      placeholder="e.g. 9876543210"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-[16px] px-4 py-3 text-slate-900 font-bold focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Email Address <span className="text-slate-400 text-[10px] font-medium">(Optional)</span></label>
+                  <input
+                    type="email"
+                    value={addForm.email}
+                    onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                    placeholder="e.g. rahul@example.com"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-[16px] px-4 py-3 text-slate-900 font-bold focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Delivery Address (Optional) */}
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-blue-600" />
+                    Initial Delivery Address (Optional)
+                  </h3>
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                    {['Home', 'Office', 'Other'].map((lbl) => (
+                      <button
+                        type="button"
+                        key={lbl}
+                        onClick={() => setAddForm({ ...addForm, addressLabel: lbl })}
+                        className={`px-3 py-1 text-xs font-black rounded-lg transition-all ${
+                          addForm.addressLabel === lbl
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Address Line 1 (House/Flat, Building, Street)</label>
+                  <input
+                    type="text"
+                    value={addForm.addressLine1}
+                    onChange={(e) => setAddForm({ ...addForm, addressLine1: e.target.value })}
+                    placeholder="e.g. Flat 302, Green Meadows, Jubilee Hills"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-[16px] px-4 py-3 text-slate-900 font-bold focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Address Line 2 (Area, Landmark)</label>
+                  <input
+                    type="text"
+                    value={addForm.addressLine2}
+                    onChange={(e) => setAddForm({ ...addForm, addressLine2: e.target.value })}
+                    placeholder="e.g. Near Apollo Hospital"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-[16px] px-4 py-3 text-slate-900 font-bold focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">City</label>
+                    <input
+                      type="text"
+                      value={addForm.city}
+                      onChange={(e) => setAddForm({ ...addForm, city: e.target.value })}
+                      placeholder="e.g. Hyderabad"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-[16px] px-4 py-3 text-slate-900 font-bold focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">State</label>
+                    <input
+                      type="text"
+                      value={addForm.state}
+                      onChange={(e) => setAddForm({ ...addForm, state: e.target.value })}
+                      placeholder="e.g. Telangana"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-[16px] px-4 py-3 text-slate-900 font-bold focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Pincode</label>
+                    <input
+                      type="text"
+                      value={addForm.pincode}
+                      onChange={(e) => setAddForm({ ...addForm, pincode: e.target.value })}
+                      placeholder="e.g. 500033"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-[16px] px-4 py-3 text-slate-900 font-bold focus:ring-4 focus:ring-blue-500/10 focus:bg-white focus:border-blue-500 transition-all text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3 border-t border-slate-100 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-6 sm:px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all active:scale-95 shadow-lg shadow-blue-500/25 disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="w-4 h-4" />
+                  )}
+                  Create Customer
                 </button>
               </div>
             </form>
