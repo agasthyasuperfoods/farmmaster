@@ -257,9 +257,12 @@ export function downloadOrderInvoice(order: InvoiceOrder) {
 <body>
   <div class="invoice-card">
     <div class="header">
-      <div>
-        <h1 class="brand-title">Agasthya Super Foods</h1>
-        <p class="brand-sub">FarmMaster Fresh Operations & Customer App</p>
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <img src="/logo.png" alt="Agasthya Nutromilk" style="width: 52px; height: 52px; object-fit: contain;" onerror="this.style.display='none'" />
+        <div>
+          <h1 class="brand-title">Agasthya Nutromilk</h1>
+          <p class="brand-sub">Pure & Fresh Farm Milk • Premium Dairy</p>
+        </div>
       </div>
       <div class="badge">
         <div>TAX INVOICE</div>
@@ -318,7 +321,7 @@ export function downloadOrderInvoice(order: InvoiceOrder) {
     </div>
 
     <div class="footer">
-      <div>Thank you for choosing Agasthya Super Foods!</div>
+      <div>Thank you for choosing Agasthya Nutromilk!</div>
       <div>Computer generated invoice &bull; Valid without signature</div>
     </div>
   </div>
