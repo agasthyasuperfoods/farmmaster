@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { verifyAccessToken, TokenPayload } from '@/src/utils/jwt';
 import { unauthorizedResponse, forbiddenResponse } from '@/src/utils/responses';
@@ -39,7 +39,7 @@ export async function authenticate(req: NextRequest): Promise<TokenPayload | nul
     payload.farmId = user.farmId ? user.farmId.toString() : null;
   } catch (error) {
     console.error("Auth DB Check Error:", error);
-    return null;
+    throw error;
   }
 
   return payload;
@@ -166,16 +166,24 @@ export async function withAuth(
   handler: (user: TokenPayload) => Promise<Response>
 ) {
   let response: Response;
-  const user = await authenticate(req);
-  if (!user) {
-    response = unauthorizedResponse('Invalid or expired token');
-  } else {
-    const { pathname } = req.nextUrl;
-    if (!authorize(user, allowedRolesOrPermissions, req.method, pathname)) {
-      response = forbiddenResponse('You do not have permission for this action');
+  try {
+    const user = await authenticate(req);
+    if (!user) {
+      response = unauthorizedResponse('Invalid or expired token');
     } else {
-      response = await handler(user);
+      const { pathname } = req.nextUrl;
+      if (!authorize(user, allowedRolesOrPermissions, req.method, pathname)) {
+        response = forbiddenResponse('You do not have permission for this action');
+      } else {
+        response = await handler(user);
+      }
     }
+  } catch (err) {
+    console.error('[withAuth] Unexpected auth/DB error:', err);
+    response = NextResponse.json(
+      { success: false, error: 'Database or Internal authentication error' },
+      { status: 500 }
+    );
   }
 
   // Calculate and log transfer sizes
