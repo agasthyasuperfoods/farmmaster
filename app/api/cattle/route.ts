@@ -235,7 +235,7 @@ export async function GET(req: NextRequest) {
 
       // Yesterday's date boundary
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0); 
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayTime = yesterday.getTime();
