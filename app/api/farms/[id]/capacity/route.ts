@@ -63,12 +63,22 @@ export async function GET(
       const occupied = await LiveStock.countDocuments({
         isDeleted: false,
         status: { $nin: ['SOLD', 'DECEASED'] },
-        $or: [
-          { farmId: farmObjectId },
-          { farmId: String(farm._id) },
-          { farmId: farm.code },
-          { farmId: farm.name },
-          { shedId: { $in: shedIds } }
+        $and: [
+          {
+            $or: [
+              { farmId: farmObjectId },
+              { farmId: String(farm._id) },
+              { farmId: farm.code },
+              { farmId: farm.name }
+            ]
+          },
+          {
+            $or: [
+              { shedId: { $in: shedIds } },
+              { shed: { $in: sheds.map(s => String(s.code)) } },
+              { shedId: { $in: sheds.map(s => String(s.code)) } }
+            ]
+          }
         ]
       });
 
