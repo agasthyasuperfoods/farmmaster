@@ -38,16 +38,6 @@ export async function POST(req: NextRequest) {
 
       // ── Validation Interceptor Check ──────────────────────────────────────
       const targetTag = String(body.tagId).trim().toUpperCase();
-      if (targetTag !== 'GENERAL') {
-        const LiveStock = mongoose.models.LiveStock || mongoose.model('LiveStock');
-        const animalExists = await LiveStock.findOne({ tag_id: targetTag, isDeleted: false });
-        if (!animalExists) {
-          return errorResponse(
-            'Data Validation Error: Cannot log transaction. The targeted Tag ID does not exist in the Live Stock registry.',
-            400
-          );
-        }
-      }
 
       // ── Resolve farmId Dynamically ──────────────────────────────────────
       let resolvedFarmId: string | null = null;

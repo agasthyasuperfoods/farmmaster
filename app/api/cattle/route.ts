@@ -335,7 +335,8 @@ export async function POST(req: NextRequest) {
       ]);
 
       if (existingLiveStock || existingCattle) {
-        return errorResponse(`A livestock record with Tag ID [${body.tag_id}] already exists in active inventory.`, 400);
+        // If animal already exists, just return the existing livestock instead of failing with 400 error
+        return successResponse(existingLiveStock || existingCattle, 'Cattle record already exists in registry');
       }
 
       // Hard-delete any old soft-deleted records with this tag to prevent unique index violation on save

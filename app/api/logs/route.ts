@@ -64,12 +64,9 @@ export async function POST(req: NextRequest) {
         const cleanTag = String(body.tag_id).trim().toUpperCase();
         const LiveStock = mongoose.models.LiveStock || mongoose.model('LiveStock');
         const animalExists = await LiveStock.findOne({ tag_id: cleanTag, isDeleted: false });
-        if (!animalExists) {
-          return errorResponse(
-            'Data Validation Error: Cannot log transaction. The targeted Tag ID does not exist in the Live Stock registry.',
-            400
-          );
-        }
+        
+        body.lineNo = animalExists ? (Number(animalExists.lineNo) || 0) : 0;
+        body.position = animalExists ? (Number(animalExists.position) || 0) : 0;
 
         // 3. Resolve farmId Dynamically
         let resolvedFarmId: string | null = null;

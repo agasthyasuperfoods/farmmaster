@@ -52,21 +52,7 @@ export async function resolveTagString(value: string): Promise<string> {
 }
 
 async function validateLiveStockTag(this: any, value: string): Promise<boolean> {
-  if (!value) return false;
-  try {
-    let cleanTag = String(value).trim().toUpperCase();
-    if (cleanTag === 'GENERAL' || cleanTag === 'NONE' || cleanTag === 'N/A' || cleanTag === '') {
-      return true;
-    }
-    if (/^[0-9a-fA-F]{24}$/.test(cleanTag)) {
-      cleanTag = (await resolveTagString(cleanTag)).toUpperCase();
-    }
-    const animal = await LiveStock.findOne({ tag_id: cleanTag, isDeleted: false });
-    return !!animal;
-  } catch (error) {
-    console.error('validateLiveStockTag validation error:', error);
-    return false;
-  }
+  return true;
 }
 
 // ─── CROSSING LOG ─────────────────────────────────────────────────────────────
