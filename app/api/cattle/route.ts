@@ -303,6 +303,30 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      const pageParam = searchParams.get('page');
+      const limitParam = searchParams.get('limit');
+
+      if (pageParam || limitParam) {
+        const page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
+        const limit = Math.max(1, parseInt(limitParam || '10', 10) || 10);
+        const total = mappedRecords.length;
+        const totalPages = Math.ceil(total / limit);
+        const skip = (page - 1) * limit;
+        const paginatedData = mappedRecords.slice(skip, skip + limit);
+
+        return successResponse({
+          data: paginatedData,
+          pagination: {
+            total,
+            page,
+            limit,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1
+          }
+        }, 'LiveStock fetched successfully');
+      }
+
       return successResponse(mappedRecords, 'LiveStock fetched successfully');
     } catch (error: any) {
       return errorResponse(error.message, 500);

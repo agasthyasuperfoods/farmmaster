@@ -10,7 +10,43 @@ export async function GET(req: NextRequest) {
   return withAuth(req, ['SUPER_ADMIN', 'FARM_ADMIN', 'INCHARGE', 'MILK_PRODUCTION'], async () => {
     try {
       await dbConnect();
-      const records = await MilkCollection.find({ isDeleted: false }).sort({ createdAt: -1 });
+
+      const { searchParams } = new URL(req.url);
+      const pageParam = searchParams.get('page');
+      const limitParam = searchParams.get('limit');
+      const tagParam = searchParams.get('tag') || searchParams.get('tagId') || searchParams.get('tag_id');
+
+      const query: any = { isDeleted: false };
+      if (tagParam) {
+        query.tag_id = new RegExp(`^${tagParam.trim()}$`, 'i');
+      }
+
+      if (pageParam || limitParam) {
+        const page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
+        const limit = Math.max(1, parseInt(limitParam || '10', 10) || 10);
+        const skip = (page - 1) * limit;
+
+        const [total, records] = await Promise.all([
+          MilkCollection.countDocuments(query),
+          MilkCollection.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)
+        ]);
+
+        const totalPages = Math.ceil(total / limit);
+
+        return successResponse({
+          data: records,
+          pagination: {
+            total,
+            page,
+            limit,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1
+          }
+        }, 'MilkCollection fetched successfully');
+      }
+
+      const records = await MilkCollection.find(query).sort({ createdAt: -1 });
       return successResponse(records, 'MilkCollection fetched successfully');
     } catch (error: any) {
       return errorResponse(error.message, 500);
