@@ -97,13 +97,10 @@ export async function POST(
         const LiveStock = mongoose.models.LiveStock || mongoose.model('LiveStock');
         
         if (normalizedType === 'purchase') {
-          // Verify that this Tag ID is not already registered in active inventory to prevent duplicates
-          const duplicateAnimal = await LiveStock.findOne({ tag_id: cleanTag, isDeleted: false });
-          if (duplicateAnimal) {
-            return errorResponse(
-              `Data Validation Error: Tag ID [${cleanTag}] is already registered in active Live Stock registry.`,
-              400
-            );
+          // Purchase logs can be imported for existing livestock or new purchases
+          const existingAnimal = await LiveStock.findOne({ tag_id: cleanTag, isDeleted: false });
+          if (existingAnimal && existingAnimal.farmId && !body.farmId) {
+            body.farmId = existingAnimal.farmId.toString();
           }
         } else {
           // Standard check for existing animals for operational logs
@@ -159,35 +156,60 @@ export async function POST(
         // 5. Create new operational log record (custom validators will trigger automatically)
         const record = await LogModel.create(body);
 
-        // ── If this is a Purchase Log, create a pending livestock record
+        // ── If this is a Purchase Log, sync with LiveStock & Cattle
         if (normalizedType === 'purchase') {
           try {
-            await LiveStock.create({
-              tag_id: cleanTag,
-              animalType: 'PENDING',
-              farmId: body.farmId || null,
-              purchaseDate: body.purchaseDate || new Date(),
-              purchasePrice: body.price || 0,
-              purchaseFrom: body.sellerName || '',
-              purchaseRemarks: body.sellerContact ? `Seller Contact: ${body.sellerContact}` : '',
-              status: 'ACTIVE',
-              isPendingDetails: true,
-              onboardingType: 'PURCHASE',
-            });
+            const existingAnimal = await LiveStock.findOne({ tag_id: cleanTag, isDeleted: false });
+            if (existingAnimal) {
+              await LiveStock.findOneAndUpdate(
+                { tag_id: cleanTag, isDeleted: false },
+                {
+                  ...(body.farmId ? { farmId: body.farmId } : {}),
+                  purchaseDate: body.purchaseDate || new Date(),
+                  purchasePrice: body.price || 0,
+                  purchaseFrom: body.sellerName || '',
+                  purchaseRemarks: body.sellerContact ? `Seller Contact: ${body.sellerContact}` : '',
+                }
+              );
+              const CattleModel = mongoose.models.Cattle || mongoose.model('Cattle');
+              await CattleModel.findOneAndUpdate(
+                { tag: cleanTag, isDeleted: false },
+                {
+                  ...(body.farmId ? { farmId: body.farmId } : {}),
+                  purchaseDate: body.purchaseDate || new Date(),
+                  purchasePrice: body.price || 0,
+                  purchaseFrom: body.sellerName || '',
+                  purchaseRemarks: body.sellerContact ? `Seller Contact: ${body.sellerContact}` : '',
+                }
+              );
+            } else {
+              await LiveStock.create({
+                tag_id: cleanTag,
+                animalType: 'PENDING',
+                farmId: body.farmId || null,
+                purchaseDate: body.purchaseDate || new Date(),
+                purchasePrice: body.price || 0,
+                purchaseFrom: body.sellerName || '',
+                purchaseRemarks: body.sellerContact ? `Seller Contact: ${body.sellerContact}` : '',
+                status: 'ACTIVE',
+                isPendingDetails: true,
+                onboardingType: 'PURCHASE',
+              });
 
-            const CattleModel = mongoose.models.Cattle || mongoose.model('Cattle');
-            await CattleModel.create({
-              tag: cleanTag,
-              cattleType: 'PENDING',
-              farmId: body.farmId || null,
-              purchaseDate: body.purchaseDate || new Date(),
-              purchasePrice: body.price || 0,
-              purchaseFrom: body.sellerName || '',
-              purchaseRemarks: body.sellerContact ? `Seller Contact: ${body.sellerContact}` : '',
-              status: 'ACTIVE',
-              isPendingDetails: true,
-              onboardingType: 'PURCHASE',
-            });
+              const CattleModel = mongoose.models.Cattle || mongoose.model('Cattle');
+              await CattleModel.create({
+                tag: cleanTag,
+                cattleType: 'PENDING',
+                farmId: body.farmId || null,
+                purchaseDate: body.purchaseDate || new Date(),
+                purchasePrice: body.price || 0,
+                purchaseFrom: body.sellerName || '',
+                purchaseRemarks: body.sellerContact ? `Seller Contact: ${body.sellerContact}` : '',
+                status: 'ACTIVE',
+                isPendingDetails: true,
+                onboardingType: 'PURCHASE',
+              });
+            }
           } catch (syncErr) {
             console.error('Non-blocking livestock sync error during purchase creation:', syncErr);
           }
