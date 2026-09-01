@@ -203,13 +203,17 @@ export async function GET(req: NextRequest) {
     try {
       await dbConnect();
 
-      // Fetch all farms to map ObjectId -> Farm Name
-      const farms = await Farm.find({ isDeleted: false }).lean();
+      // Fetch all farms to map ObjectId -> Farm Name (projection only)
+      const farms = await Farm.find({ isDeleted: false }, { _id: 1, name: 1 }).lean();
       const farmMap = new Map(farms.map(f => [f._id.toString(), f.name]));
 
-      // Fetch latest CrossingLog for status overrides
-      const crossingLogs = await CrossingLog.find({ isDeleted: false })
+      // Fetch latest CrossingLog for status overrides (lean + projection + limit)
+      const crossingLogs = await CrossingLog.find(
+        { isDeleted: false },
+        { tag_id: 1, tag: 1, actualCalvingDate: 1, pregnancyStatus: 1, createdAt: 1 }
+      )
         .sort({ createdAt: -1 })
+        .limit(2000)
         .lean();
 
       const tagToStatus = new Map<string, string>();
@@ -228,28 +232,24 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Fetch MilkCollection records to compute yesterday's average (morning + evening) / 2
-      const milkCollections = await MilkCollection.find({ isDeleted: false })
-        .sort({ date: -1, createdAt: -1 })
-        .lean();
-
-      // Yesterday's date boundary
+      // Fetch MilkCollection records ONLY for yesterday (not the entire database history)
       const today = new Date();
       today.setHours(0, 0, 0, 0); 
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayTime = yesterday.getTime();
+      const yesterdayEnd = new Date(yesterday);
+      yesterdayEnd.setHours(23, 59, 59, 999);
+
+      const milkCollections = await MilkCollection.find(
+        { isDeleted: false, date: { $gte: yesterday, $lte: yesterdayEnd } },
+        { tag_id: 1, tagId: 1, date: 1, quantity: 1 }
+      ).lean();
 
       const tagToLatestSum = new Map<string, number>();
       for (const col of milkCollections) {
         const tag = String(col.tag_id || col.tagId || '').trim().toUpperCase();
-        if (tag && col.date) {
-          const colDate = new Date(col.date);
-          colDate.setHours(0, 0, 0, 0);
-          
-          if (colDate.getTime() === yesterdayTime) {
-            tagToLatestSum.set(tag, (tagToLatestSum.get(tag) || 0) + (col.quantity || 0));
-          }
+        if (tag) {
+          tagToLatestSum.set(tag, (tagToLatestSum.get(tag) || 0) + (col.quantity || 0));
         }
       }
 
@@ -259,7 +259,7 @@ export async function GET(req: NextRequest) {
         tagToAverageMilk.set(tag, Number((sum / 2).toFixed(2)));
       }
 
-      const records = await LiveStock.find({ isDeleted: false }).sort({ createdAt: -1 });
+      const records = await LiveStock.find({ isDeleted: false }).sort({ createdAt: -1 }).lean();
       let mappedRecords = records.map(r => mapLiveStockToCattle(r, farmMap, tagToStatus, tagToAverageMilk));
 
       const { searchParams } = new URL(req.url);
