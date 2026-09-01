@@ -138,43 +138,46 @@ export async function POST(req: NextRequest) {
         delete body.farmId;
       }
 
-      // ── Auto-calculate crossingAttemptNumber ──────────────────────────────
-      const lastCalving = await CrossingLog.findOne({
-        tag_id: cleanTag,
-        isDeleted: false,
-        actualCalvingDate: { $ne: null }
-      }).sort({ actualCalvingDate: -1 });
-
-      const targetCrossingDate = body.crossingDate ? new Date(body.crossingDate) : new Date();
-
-      let attemptsCount = 0;
-      if (lastCalving && lastCalving.actualCalvingDate) {
-        attemptsCount = await CrossingLog.countDocuments({
-          tag_id: cleanTag,
-          isDeleted: false,
-          crossingDate: { $gt: lastCalving.actualCalvingDate, $lt: targetCrossingDate }
-        });
+      // ── Crossing Attempt Number (use provided from Excel / payload if present, else auto-calculate)
+      if (body.crossingAttemptNumber !== undefined && body.crossingAttemptNumber !== null && !isNaN(Number(body.crossingAttemptNumber)) && Number(body.crossingAttemptNumber) > 0) {
+        body.crossingAttemptNumber = Number(body.crossingAttemptNumber);
       } else {
-        attemptsCount = await CrossingLog.countDocuments({
+        const lastCalving = await CrossingLog.findOne({
           tag_id: cleanTag,
           isDeleted: false,
-          crossingDate: { $lt: targetCrossingDate }
-        });
-      }
-      body.crossingAttemptNumber = attemptsCount + 1;
+          actualCalvingDate: { $ne: null }
+        }).sort({ actualCalvingDate: -1 });
 
-      // ── Semen Straw Deduction logic ──────────────────────────────────────
+        const targetCrossingDate = body.crossingDate ? new Date(body.crossingDate) : new Date();
+
+        let attemptsCount = 0;
+        if (lastCalving && lastCalving.actualCalvingDate) {
+          attemptsCount = await CrossingLog.countDocuments({
+            tag_id: cleanTag,
+            isDeleted: false,
+            crossingDate: { $gt: lastCalving.actualCalvingDate, $lt: targetCrossingDate }
+          });
+        } else {
+          attemptsCount = await CrossingLog.countDocuments({
+            tag_id: cleanTag,
+            isDeleted: false,
+            crossingDate: { $lt: targetCrossingDate }
+          });
+        }
+        body.crossingAttemptNumber = attemptsCount + 1;
+      }
+
+      // ── Semen Straw Deduction logic (non-blocking for external/legacy sire batches) ──
       if (body.crossingType === 'Artificial' && body.batchNumber) {
-        const batch = await SemenStraw.findOne({ batchNo: String(body.batchNumber).trim().toUpperCase(), isDeleted: false });
-        if (!batch) {
-          return errorResponse(`Semen straw batch number ${body.batchNumber} does not exist.`, 400);
+        try {
+          const batch = await SemenStraw.findOne({ batchNo: String(body.batchNumber).trim().toUpperCase(), isDeleted: false });
+          if (batch && batch.noOfStraws - batch.usedStraws > 0) {
+            batch.usedStraws += 1;
+            await batch.save();
+          }
+        } catch (strawErr) {
+          console.error('[POST /api/crossing] Semen straw deduction error:', strawErr);
         }
-        if (batch.noOfStraws - batch.usedStraws <= 0) {
-          return errorResponse(`No straws available in batch ${body.batchNumber} (Available: 0).`, 400);
-        }
-        // Increment used count
-        batch.usedStraws += 1;
-        await batch.save();
       }
 
       const record = await CrossingLog.create(body);
