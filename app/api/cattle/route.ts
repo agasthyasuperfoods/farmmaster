@@ -116,6 +116,12 @@ export function deepSanitizeCattleInput(body: any, userFarmId?: string | null) {
   const statusVal = String(body.status || 'ACTIVE').trim().toUpperCase();
   body.status = ['ACTIVE', 'SOLD', 'DECEASED', 'PREGNANT', 'DRY', 'EMPTY', 'PENDING', 'ONE_TIME_MILKING', 'ONE TIME MILKING'].includes(statusVal) ? statusVal : 'ACTIVE';
 
+  // Normalize farmBorn
+  if (body.farmBorn !== undefined) {
+    const fbStr = String(body.farmBorn || '').trim().toLowerCase();
+    body.farmBorn = ['yes', 'true', '1', 'y'].includes(fbStr) ? 'Yes' : 'No';
+  }
+
   // Force calvings to 0 if gender is Male
   const genderVal = String(body.gender || '').trim().toUpperCase();
   if (genderVal === 'MALE') {
@@ -134,6 +140,14 @@ export function mapLiveStockToCattle(
   if (!r) return r;
   const doc = r.toObject ? r.toObject() : JSON.parse(JSON.stringify(r));
   const tag = String(doc.tag_id || doc.tag || '').trim().toUpperCase();
+
+  // Normalize farmBorn
+  if (doc.farmBorn !== undefined) {
+    const fbStr = String(doc.farmBorn || '').trim().toLowerCase();
+    doc.farmBorn = ['yes', 'true', '1', 'y'].includes(fbStr) ? 'Yes' : 'No';
+  } else {
+    doc.farmBorn = 'No';
+  }
 
   // Ensure tag is present for frontend compatibility
   if (!doc.tag) doc.tag = doc.tag_id || '';
