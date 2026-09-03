@@ -135,7 +135,8 @@ export function mapLiveStockToCattle(
   r: any,
   farmMap?: Map<string, string>,
   tagToStatus?: Map<string, string>,
-  tagToAverageMilk?: Map<string, number>
+  tagToAverageMilk?: Map<string, number>,
+  shedToFarmMap?: Map<string, { farmId: string; farmName: string }>
 ) {
   if (!r) return r;
   const doc = r.toObject ? r.toObject() : JSON.parse(JSON.stringify(r));
@@ -206,20 +207,34 @@ export function mapLiveStockToCattle(
   if (farmMap && doc.farmId) {
     const fId = doc.farmId.toString();
     doc.farmName = farmMap.get(fId) || farmMap.get(fId.toUpperCase()) || fId;
-  } else if (farmMap && doc.shed) {
+  }
+  
+  if ((!doc.farmId || !doc.farmName || doc.farmName === '-') && doc.shed && shedToFarmMap) {
+    const shedRaw = String(doc.shed).trim().toUpperCase();
+    const cleanNum = shedRaw.replace(/[^0-9]/g, '');
+    let matchedShed = shedToFarmMap.get(shedRaw) || (cleanNum ? shedToFarmMap.get(cleanNum) : null);
+    if (!matchedShed && cleanNum) {
+      matchedShed = shedToFarmMap.get(`SHED${cleanNum}`) || shedToFarmMap.get(`SHED ${cleanNum}`);
+    }
+    if (matchedShed && matchedShed.farmId) {
+      doc.farmId = matchedShed.farmId;
+      doc.farmName = matchedShed.farmName || doc.farmName || '-';
+    }
+  }
+
+  // Backup fallback on string matching if farmId is still missing
+  if ((!doc.farmId || !doc.farmName || doc.farmName === '-') && farmMap && doc.shed) {
     const shedUpper = String(doc.shed).toUpperCase();
     if (shedUpper.includes('TKP') || shedUpper.includes('TALAKONDAPALLY') || shedUpper.includes('TANAKONDAPALLI')) {
-      doc.farmName = farmMap.get('TKP') || 'Tanakondapalli';
+      doc.farmName = farmMap.get('TKP') || 'Talakondapally';
       if (farmMap.has('TKP_ID')) doc.farmId = farmMap.get('TKP_ID');
     } else if (shedUpper.includes('TDR') || shedUpper.includes('TANDUR')) {
       doc.farmName = farmMap.get('TDR') || 'Tandur';
       if (farmMap.has('TDR_ID')) doc.farmId = farmMap.get('TDR_ID');
-    } else {
-      doc.farmName = '-';
     }
-  } else {
-    doc.farmName = '-';
   }
+
+  if (!doc.farmName) doc.farmName = '-';
 
   return doc;
 }
@@ -242,6 +257,24 @@ export async function GET(req: NextRequest) {
         }
         if (f.name) {
           farmMap.set(String(f.name).toUpperCase(), f.name);
+        }
+      }
+
+      // Fetch all sheds to map shed code/name -> farmId & farmName
+      const sheds = await Shed.find({ isDeleted: false }, { _id: 1, name: 1, code: 1, farmId: 1 }).lean();
+      const shedToFarmMap = new Map<string, { farmId: string; farmName: string }>();
+      for (const s of sheds) {
+        const sFarmId = s.farmId ? s.farmId.toString() : '';
+        const sFarmName = farmMap.get(sFarmId) || '';
+        const info = { farmId: sFarmId, farmName: sFarmName };
+        if (s.name) {
+          shedToFarmMap.set(s.name.trim().toUpperCase(), info);
+          shedToFarmMap.set(s.name.replace(/\s+/g, '').toUpperCase(), info);
+        }
+        if (s.code) {
+          shedToFarmMap.set(String(s.code).trim().toUpperCase(), info);
+          shedToFarmMap.set(`SHED${String(s.code).trim().toUpperCase()}`, info);
+          shedToFarmMap.set(`SHED ${String(s.code).trim().toUpperCase()}`, info);
         }
       }
 
@@ -298,7 +331,7 @@ export async function GET(req: NextRequest) {
       }
 
       const records = await LiveStock.find({ isDeleted: false }).sort({ createdAt: -1 }).lean();
-      let mappedRecords = records.map(r => mapLiveStockToCattle(r, farmMap, tagToStatus, tagToAverageMilk));
+      let mappedRecords = records.map(r => mapLiveStockToCattle(r, farmMap, tagToStatus, tagToAverageMilk, shedToFarmMap));
 
       const { searchParams } = new URL(req.url);
       const queryDate = searchParams.get('date');
