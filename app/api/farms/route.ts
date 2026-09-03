@@ -23,17 +23,54 @@ export async function GET(req: NextRequest) {
       const farms = await Farm.find(query).sort({ createdAt: -1 }).lean();
 
       if (embedCapacity) {
+        const isInactiveStatus = { $nin: ['SOLD', 'DECEASED', 'DEAD', 'sold', 'deceased', 'dead'] };
         const enhancedFarms = await Promise.all(
           farms.map(async (farm) => {
             const sheds = await Shed.find({ farmId: farm._id, isDeleted: false }).lean();
             const maxCapacity = sheds.reduce((sum, s) => sum + (Number(s.capacity) || 0), 0);
 
-            const occupied = await LiveStock.countDocuments({
-              farmId: farm._id,
-              status: { $nin: ['SOLD', 'DECEASED'] },
-              isDeleted: false,
-            });
+            const shedBreakdown = await Promise.all(
+              sheds.map(async (shed) => {
+                const shedIdStr = String(shed._id);
+                const shedCodeStr = String(shed.code || '').trim();
+                const cleanNum = shedCodeStr.replace(/[^0-9]/g, '');
+                const num = cleanNum ? parseInt(cleanNum, 10) : null;
+                const shedNameStr = String(shed.name || '').trim();
 
+                const orConditions: any[] = [
+                  { shedId: shed._id },
+                  { shedId: shedIdStr },
+                  { shedId: shedCodeStr },
+                  { shed: shed._id },
+                  { shed: shedIdStr },
+                  { shed: shedCodeStr },
+                ];
+
+                if (num !== null && !isNaN(num)) {
+                  orConditions.push({ shed: num });
+                  orConditions.push({ shedId: num });
+                  orConditions.push({ shed: String(num) });
+                  orConditions.push({ shedId: String(num) });
+                  orConditions.push({ shed: new RegExp(`^\\s*(?:[A-Z0-9]+[\\s-_]+)?(?:shed\\s*)?${num}\\s*$`, 'i') });
+                  orConditions.push({ shedId: new RegExp(`^\\s*(?:[A-Z0-9]+[\\s-_]+)?(?:shed\\s*)?${num}\\s*$`, 'i') });
+                }
+
+                if (shedNameStr) {
+                  orConditions.push({ shedId: shedNameStr });
+                  orConditions.push({ shed: shedNameStr });
+                  orConditions.push({ shed: new RegExp(`^\\s*${shedNameStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i') });
+                }
+
+                const count = await LiveStock.countDocuments({
+                  isDeleted: { $ne: true },
+                  status: isInactiveStatus,
+                  $or: orConditions,
+                });
+                return count;
+              })
+            );
+
+            const occupied = shedBreakdown.reduce((sum, c) => sum + c, 0);
             const vacant = Math.max(0, maxCapacity - occupied);
             const usagePercent = maxCapacity > 0 ? Math.round((occupied / maxCapacity) * 1000) / 10 : 0;
 

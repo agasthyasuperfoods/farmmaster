@@ -55,48 +55,46 @@ export async function GET(
         0
       );
 
-      // ── 4. Live occupancy: count active animals assigned to this farm ─────────
-      // We match on farmId covering both ObjectId and string/code variants
-      // that older records may carry.
-      const shedIds = sheds.map((s) => String(s._id));
+      const isInactiveStatus = { $nin: ['SOLD', 'DECEASED', 'DEAD', 'sold', 'deceased', 'dead'] };
 
-      const occupied = await LiveStock.countDocuments({
-        isDeleted: false,
-        status: { $nin: ['SOLD', 'DECEASED'] },
-        $and: [
-          {
-            $or: [
-              { farmId: farmObjectId },
-              { farmId: String(farm._id) },
-              { farmId: farm.code },
-              { farmId: farm.name }
-            ]
-          },
-          {
-            $or: [
-              { shedId: { $in: shedIds } },
-              { shed: { $in: sheds.map(s => String(s.code)) } },
-              { shedId: { $in: sheds.map(s => String(s.code)) } }
-            ]
-          }
-        ]
-      });
-
-      // ── 5. Per-shed breakdown ─────────────────────────────────────────────────
-      // For each shed, count active animals whose shedId matches this shed's
-      // _id (as ObjectId or string) or name/code.
+      // ── 4. Per-shed breakdown ─────────────────────────────────────────────────
+      // For each shed, accurately count active animals currently residing in it
       const shedBreakdown = await Promise.all(
         sheds.map(async (shed) => {
           const shedIdStr = String(shed._id);
+          const shedCodeStr = String(shed.code || '').trim();
+          const cleanNum = shedCodeStr.replace(/[^0-9]/g, '');
+          const num = cleanNum ? parseInt(cleanNum, 10) : null;
+          const shedNameStr = String(shed.name || '').trim();
+
+          const orConditions: any[] = [
+            { shedId: shed._id },
+            { shedId: shedIdStr },
+            { shedId: shedCodeStr },
+            { shed: shed._id },
+            { shed: shedIdStr },
+            { shed: shedCodeStr },
+          ];
+
+          if (num !== null && !isNaN(num)) {
+            orConditions.push({ shed: num });
+            orConditions.push({ shedId: num });
+            orConditions.push({ shed: String(num) });
+            orConditions.push({ shedId: String(num) });
+            orConditions.push({ shed: new RegExp(`^\\s*(?:[A-Z0-9]+[\\s-_]+)?(?:shed\\s*)?${num}\\s*$`, 'i') });
+            orConditions.push({ shedId: new RegExp(`^\\s*(?:[A-Z0-9]+[\\s-_]+)?(?:shed\\s*)?${num}\\s*$`, 'i') });
+          }
+
+          if (shedNameStr) {
+            orConditions.push({ shedId: shedNameStr });
+            orConditions.push({ shed: shedNameStr });
+            orConditions.push({ shed: new RegExp(`^\\s*${shedNameStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i') });
+          }
+
           const shedOccupied = await LiveStock.countDocuments({
-            isDeleted: false,
-            status: { $nin: ['SOLD', 'DECEASED'] },
-            $or: [
-              { shedId: shed._id },
-              { shedId: shedIdStr },
-              { shedId: shed.code },
-              { shedId: shed.name },
-            ],
+            isDeleted: { $ne: true },
+            status: isInactiveStatus,
+            $or: orConditions,
           });
 
           return {
@@ -110,6 +108,9 @@ export async function GET(
           };
         })
       );
+
+      // ── 5. Total live occupancy for farm = sum of live cattle in farm sheds ──
+      const occupied = shedBreakdown.reduce((sum, s) => sum + s.occupied, 0);
 
       // ── 6. Balancing calculations ─────────────────────────────────────────────
       const vacant = Math.max(0, maxCapacity - occupied);
