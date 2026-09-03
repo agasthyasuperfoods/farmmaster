@@ -5,6 +5,7 @@ import LiveStock from '@/src/models/LiveStock';
 import Cattle from '@/src/models/Cattle';
 import Tag from '@/src/models/Tag';
 import Farm from '@/src/models/Farm';
+import Shed from '@/src/models/Shed';
 import { CrossingLog } from '@/src/models/Logs';
 import MilkCollection from '@/src/models/MilkCollection';
 import { withAuth } from '@/src/utils/authGuard';
@@ -187,10 +188,21 @@ export function mapLiveStockToCattle(
     doc.milk = 0;
   }
 
-  // Resolve Farm Name
+  // Resolve Farm Name & ID
   if (farmMap && doc.farmId) {
     const fId = doc.farmId.toString();
-    doc.farmName = farmMap.get(fId) || fId;
+    doc.farmName = farmMap.get(fId) || farmMap.get(fId.toUpperCase()) || fId;
+  } else if (farmMap && doc.shed) {
+    const shedUpper = String(doc.shed).toUpperCase();
+    if (shedUpper.includes('TKP') || shedUpper.includes('TALAKONDAPALLY') || shedUpper.includes('TANAKONDAPALLI')) {
+      doc.farmName = farmMap.get('TKP') || 'Tanakondapalli';
+      if (farmMap.has('TKP_ID')) doc.farmId = farmMap.get('TKP_ID');
+    } else if (shedUpper.includes('TDR') || shedUpper.includes('TANDUR')) {
+      doc.farmName = farmMap.get('TDR') || 'Tandur';
+      if (farmMap.has('TDR_ID')) doc.farmId = farmMap.get('TDR_ID');
+    } else {
+      doc.farmName = '-';
+    }
   } else {
     doc.farmName = '-';
   }
@@ -203,9 +215,21 @@ export async function GET(req: NextRequest) {
     try {
       await dbConnect();
 
-      // Fetch all farms to map ObjectId -> Farm Name (projection only)
-      const farms = await Farm.find({ isDeleted: false }, { _id: 1, name: 1 }).lean();
-      const farmMap = new Map(farms.map(f => [f._id.toString(), f.name]));
+      // Fetch all farms to map ObjectId & Code & Name -> Farm Name (projection only)
+      const farms = await Farm.find({ isDeleted: false }, { _id: 1, name: 1, code: 1 }).lean();
+      const farmMap = new Map<string, string>();
+      for (const f of farms) {
+        const idStr = f._id.toString();
+        farmMap.set(idStr, f.name);
+        if (f.code) {
+          const cUpper = String(f.code).toUpperCase();
+          farmMap.set(cUpper, f.name);
+          farmMap.set(`${cUpper}_ID`, idStr);
+        }
+        if (f.name) {
+          farmMap.set(String(f.name).toUpperCase(), f.name);
+        }
+      }
 
       // Fetch latest CrossingLog for status overrides (lean + projection + limit)
       const crossingLogs = await CrossingLog.find(
@@ -369,15 +393,43 @@ export async function POST(req: NextRequest) {
         Cattle.deleteMany({ tag: body.tag, isDeleted: true })
       ]);
 
-      // ── Resolve farmId from short codes if it is still a string
+      // ── Resolve farmId from short codes / names if it is still a string
       if (body.farmId && !mongoose.Types.ObjectId.isValid(body.farmId.toString())) {
-        const farm = await Farm.findOne({ code: String(body.farmId).trim() });
+        const farmStr = String(body.farmId).trim();
+        const farm = await Farm.findOne({
+          $or: [
+            { code: { $regex: new RegExp(`^${farmStr}$`, 'i') } },
+            { name: { $regex: new RegExp(`^${farmStr}$`, 'i') } },
+            { name: { $regex: new RegExp(farmStr, 'i') } },
+            { code: { $regex: new RegExp(farmStr, 'i') } },
+          ],
+          isDeleted: false
+        });
         if (farm) {
           body.farmId = farm._id;
-        } else {
-          // Attempt to assign authenticated user's farmId
-          body.farmId = user.farmId ? new mongoose.Types.ObjectId(user.farmId) : null;
+        } else if (user.farmId && mongoose.Types.ObjectId.isValid(user.farmId)) {
+          body.farmId = new mongoose.Types.ObjectId(user.farmId);
         }
+      }
+
+      // If still missing farmId, attempt to resolve from shed name
+      if (!body.farmId && body.shed && body.shed !== '-') {
+        const shedStr = String(body.shed).trim();
+        const matchedShed = await Shed.findOne({
+          $or: [
+            { name: { $regex: new RegExp(shedStr, 'i') } },
+            { code: shedStr }
+          ],
+          isDeleted: false
+        });
+        if (matchedShed && matchedShed.farmId) {
+          body.farmId = matchedShed.farmId;
+        }
+      }
+
+      // If still missing farmId, attempt to assign authenticated user's farmId
+      if (!body.farmId && user.farmId && mongoose.Types.ObjectId.isValid(user.farmId)) {
+        body.farmId = new mongoose.Types.ObjectId(user.farmId);
       }
 
       // If still missing farmId, pull first farm in system
